@@ -7,10 +7,11 @@ import plotly.graph_objects as go
 from src.data_cleaning import THAI_MONTHS
 
 # Color palette matching prototype
-COLOR_GENERATED = "#0055b7"   # Dark blue
-COLOR_RECYCLED = "#64b5f6"    # Light blue
-COLOR_DISPOSED = "#e53935"    # Red
-COLOR_STAFF = "#0055b7"       # Dark blue
+COLOR_GENERATED = "#0068c9"   # Primary blue
+COLOR_RECYCLED = "#60b4ff"    # Sky/light blue
+COLOR_DISPOSED = "#ff4b4b"    # Red/coral
+COLOR_STAFF = "#60b4ff"       # Light blue (matches prototype image)
+COLOR_TOP10 = "#60b4ff"       # Light blue (matches prototype image)
 
 
 def get_empty_figure(message: str = "ไม่พบข้อมูลตามเงื่อนไขที่เลือก") -> go.Figure:
@@ -23,7 +24,7 @@ def get_empty_figure(message: str = "ไม่พบข้อมูลตาม�
         x=0.5,
         y=0.5,
         showarrow=False,
-        font=dict(size=16, color="#666666"),
+        font=dict(size=16),
     )
     fig.update_layout(
         xaxis=dict(showgrid=False, showticklabels=False),
@@ -54,7 +55,7 @@ def create_monthly_trend_chart(df: pd.DataFrame, selected_months: Optional[List[
         .sum()
     )
 
-    # Reindex to ensure all selected months are present in proper calendar order
+    # Reindex to ensure all 12 calendar months are present
     month_df = pd.DataFrame({"เดือน": months})
     merged = pd.merge(month_df, monthly_summary, on="เดือน", how="left").fillna(0)
 
@@ -97,9 +98,9 @@ def create_monthly_trend_chart(df: pd.DataFrame, selected_months: Optional[List[
     )
 
     fig.update_layout(
-        title=dict(text="แนวโน้มปริมาณขยะรายเดือน", font=dict(size=16, color="#262730")),
-        xaxis=dict(title="เดือน", showgrid=True, gridcolor="#f0f2f6"),
-        yaxis=dict(title="ปริมาณ (กก.)", showgrid=True, gridcolor="#f0f2f6", rangemode="tozero"),
+        title=dict(text="แนวโน้มปริมาณขยะรายเดือน", font=dict(size=16)),
+        xaxis=dict(title="เดือน", showgrid=True),
+        yaxis=dict(title="ปริมาณ (กก.)", showgrid=True, rangemode="tozero"),
         legend=dict(
             title=dict(text="ประเภทขยะ"),
             orientation="v",
@@ -109,8 +110,8 @@ def create_monthly_trend_chart(df: pd.DataFrame, selected_months: Optional[List[
             yanchor="top",
         ),
         margin=dict(l=40, r=40, t=50, b=40),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
         hovermode="x unified",
         height=450,
     )
@@ -164,7 +165,7 @@ def create_department_comparison_chart(df: pd.DataFrame) -> go.Figure:
     )
 
     fig.update_layout(
-        title=dict(text="เปรียบเทียบปริมาณขยะตามหน่วยงาน", font=dict(size=16, color="#262730")),
+        title=dict(text="เปรียบเทียบปริมาณขยะตามหน่วยงาน", font=dict(size=16)),
         barmode="group",
         xaxis=dict(
             title="หน่วยงาน",
@@ -172,7 +173,7 @@ def create_department_comparison_chart(df: pd.DataFrame) -> go.Figure:
             showgrid=False,
             tickfont=dict(size=10),
         ),
-        yaxis=dict(title="ปริมาณ (กก.)", showgrid=True, gridcolor="#f0f2f6"),
+        yaxis=dict(title="ปริมาณ (กก.)", showgrid=True),
         legend=dict(
             title=dict(text="ประเภท"),
             orientation="v",
@@ -182,8 +183,8 @@ def create_department_comparison_chart(df: pd.DataFrame) -> go.Figure:
             yanchor="top",
         ),
         margin=dict(l=40, r=40, t=50, b=120),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
         height=500,
     )
     return fig
@@ -222,11 +223,12 @@ def create_waste_management_donut_chart(df: pd.DataFrame) -> go.Figure:
     )
 
     fig.update_layout(
-        title=dict(text="สัดส่วนการจัดการขยะ", font=dict(size=15, color="#262730")),
+        title=dict(text="สัดส่วนการจัดการขยะ", font=dict(size=15)),
         showlegend=True,
         legend=dict(orientation="v", x=1.02, y=0.5),
         margin=dict(l=20, r=20, t=40, b=20),
-        paper_bgcolor="white",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
         height=380,
     )
     return fig
@@ -254,18 +256,18 @@ def create_top10_departments_chart(df: pd.DataFrame) -> go.Figure:
             x=dept_summary_asc["ขยะที่เกิดขึ้น (กก.)"],
             y=dept_summary_asc["หน่วยงาน"],
             orientation="h",
-            marker_color=COLOR_GENERATED,
+            marker_color=COLOR_TOP10,
             hovertemplate="<b>%{y}</b><br>ขยะที่เกิดขึ้น: %{x:,.2f} กก.<extra></extra>",
         )
     )
 
     fig.update_layout(
-        title=dict(text="10 หน่วยงานที่มีขยะเกิดขึ้นสูงสุด", font=dict(size=15, color="#262730")),
-        xaxis=dict(title="ขยะที่เกิดขึ้น (กก.)", showgrid=True, gridcolor="#f0f2f6"),
+        title=dict(text="10 หน่วยงานที่มีขยะเกิดขึ้นสูงสุด", font=dict(size=15)),
+        xaxis=dict(title="ขยะที่เกิดขึ้น (กก.)", showgrid=True),
         yaxis=dict(title="หน่วยงาน", tickfont=dict(size=11)),
         margin=dict(l=20, r=20, t=40, b=40),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
         height=380,
     )
     return fig
@@ -294,12 +296,12 @@ def create_monthly_staff_chart(df: pd.DataFrame, selected_months: Optional[List[
     )
 
     fig.update_layout(
-        title=dict(text="จำนวนคนเฉลี่ยรายเดือน", font=dict(size=16, color="#262730")),
+        title=dict(text="จำนวนคนเฉลี่ยรายเดือน", font=dict(size=16)),
         xaxis=dict(title="เดือน", showgrid=False),
-        yaxis=dict(title="คนเฉลี่ย", showgrid=True, gridcolor="#f0f2f6"),
+        yaxis=dict(title="คนเฉลี่ย", showgrid=True),
         margin=dict(l=40, r=40, t=50, b=40),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
         height=400,
     )
     return fig
