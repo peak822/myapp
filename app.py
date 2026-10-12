@@ -1,30 +1,32 @@
 """
-Streamlit Web Application: Waste Management Dashboard
-Dataset: กรมอุทยานแห่งชาติ สัตว์ป่า และพันธุ์พืช (data.go.th)
+Streamlit Web Application: National Environmental Board Meeting Dashboard
+Dataset: การประชุมคณะกรรมการสิ่งแวดล้อมแห่งชาติ (data.go.th)
+สำนักงานนโยบายและแผนทรัพยากรธรรมชาติและสิ่งแวดล้อม (สผ.)
 """
 from pathlib import Path
 import streamlit as st
 import pandas as pd
 
-from src.data_loader import load_raw_data
-from src.data_cleaning import clean_data, THAI_MONTHS
+from src.data_loader import load_raw_meeting_data
+from src.data_cleaning import clean_meeting_data, THAI_MONTHS
 from src.charts import (
-    create_monthly_trend_chart,
-    create_department_comparison_chart,
-    create_waste_management_donut_chart,
-    create_top10_departments_chart,
-    create_monthly_staff_chart,
+    create_yearly_trend_chart,
+    create_topic_donut_chart,
+    create_domain_bar_chart,
+    create_meeting_format_chart,
+    create_monthly_meeting_chart,
+    create_top_agencies_chart,
 )
 
 # Page configuration
 st.set_page_config(
-    page_title="Waste Management Dashboard",
-    page_icon="♻️",
+    page_title="National Environmental Board Meeting Dashboard",
+    page_icon="🌿",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Custom Styling to match prototype aesthetic and elegant Thai typography
+# Custom Styling for elegant Thai typography and icon preservation
 st.markdown(
     """
     <style>
@@ -60,12 +62,6 @@ st.markdown(
         align-items: center;
         gap: 0.5rem;
     }
-
-    .sub-desc {
-        color: #4b5563;
-        font-size: 0.95rem;
-        margin-bottom: 1.25rem;
-    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -74,14 +70,16 @@ st.markdown(
 
 @st.cache_data
 def get_data() -> pd.DataFrame:
-    """Loads and caches processed dataset."""
-    processed_file = Path(__file__).parent / "data" / "processed" / "waste_data_combined.csv"
+    """Loads and caches processed meeting dataset."""
+    processed_file = (
+        Path(__file__).parent / "data" / "processed" / "neb_meeting_processed.csv"
+    )
     if processed_file.exists():
         return pd.read_csv(processed_file, encoding="utf-8-sig")
 
     # Fallback to load and clean from raw
-    raw_df = load_raw_data()
-    clean_df = clean_data(raw_df)
+    raw_df = load_raw_meeting_data()
+    clean_df = clean_meeting_data(raw_df)
     return clean_df
 
 
@@ -98,47 +96,50 @@ except Exception as e:
 st.sidebar.title("🔎 Filter ข้อมูล")
 
 # Year filter
-available_years = sorted(df["ปี"].dropna().unique().tolist(), reverse=True)
-default_years = [2569] if 2569 in available_years else available_years
-selected_years = st.sidebar.multiselect("ปี", options=available_years, default=default_years)
+available_years = sorted(df["ปีงบประมาณ พ.ศ."].dropna().unique().tolist(), reverse=True)
+selected_years = st.sidebar.multiselect(
+    "ปีงบประมาณ พ.ศ.", options=available_years, default=available_years
+)
+df_filtered = df[df["ปีงบประมาณ พ.ศ."].isin(selected_years)] if selected_years else df
 
-# Filter dataframe by selected years
-df_filtered_year = df[df["ปี"].isin(selected_years)] if selected_years else df
-
-# Affiliation filter (สังกัด)
-available_affiliations = sorted(df_filtered_year["สังกัด"].dropna().unique().tolist())
-selected_affiliations = st.sidebar.multiselect(
-    "สังกัด", options=available_affiliations, default=available_affiliations
+# Agenda Type filter (ประเภทวาระ)
+available_types = sorted(df_filtered["ประเภทวาระ"].dropna().unique().tolist())
+selected_types = st.sidebar.multiselect(
+    "ประเภทวาระ", options=available_types, default=available_types
+)
+df_filtered = (
+    df_filtered[df_filtered["ประเภทวาระ"].isin(selected_types)]
+    if selected_types
+    else df_filtered
 )
 
-# Filter dataframe by affiliations
-df_filtered_affil = (
-    df_filtered_year[df_filtered_year["สังกัด"].isin(selected_affiliations)]
-    if selected_affiliations
-    else df_filtered_year
+# Domain filter (ด้าน)
+available_domains = sorted(df_filtered["ด้าน"].dropna().unique().tolist())
+selected_domains = st.sidebar.multiselect(
+    "ด้านสิ่งแวดล้อม", options=available_domains, default=available_domains
+)
+df_filtered = (
+    df_filtered[df_filtered["ด้าน"].isin(selected_domains)]
+    if selected_domains
+    else df_filtered
 )
 
-# Department filter (หน่วยงาน)
-available_departments = sorted(df_filtered_affil["หน่วยงาน"].dropna().unique().tolist())
-selected_departments = st.sidebar.multiselect(
-    "หน่วยงาน", options=available_departments, default=available_departments
+# Format filter (รูปแบบการประชุม)
+available_formats = sorted(df_filtered["รูปแบบการประชุม"].dropna().unique().tolist())
+selected_formats = st.sidebar.multiselect(
+    "รูปแบบการประชุม", options=available_formats, default=available_formats
 )
-
-# Filter dataframe by departments
-df_filtered_dept = (
-    df_filtered_affil[df_filtered_affil["หน่วยงาน"].isin(selected_departments)]
-    if selected_departments
-    else df_filtered_affil
+df_filtered = (
+    df_filtered[df_filtered["รูปแบบการประชุม"].isin(selected_formats)]
+    if selected_formats
+    else df_filtered
 )
 
 # Month filter (เดือน)
-# Only list months that are present in the dataset, ordered by Thai calendar
-present_months = [m for m in THAI_MONTHS if m in df_filtered_dept["เดือน"].values]
+present_months = [m for m in THAI_MONTHS if m in df_filtered["เดือน"].values]
 selected_months = st.sidebar.multiselect("เดือน", options=present_months, default=present_months)
-
-# Final filtered dataframe
 filtered_df = (
-    df_filtered_dept[df_filtered_dept["เดือน"].isin(selected_months)]
+    df_filtered[df_filtered["เดือน"].isin(selected_months)]
     if selected_months
     else pd.DataFrame(columns=df.columns)
 )
@@ -146,10 +147,11 @@ filtered_df = (
 # ==========================================
 # Main Header
 # ==========================================
-st.title("♻️ Waste Management Dashboard")
-st.markdown("#### Dashboard การจัดการขยะ")
+st.title("🌿 National Environmental Board Meeting Dashboard")
+st.markdown("#### แดชบอร์ดข้อมูลการประชุมคณะกรรมการสิ่งแวดล้อมแห่งชาติ")
 st.markdown(
-    "ใช้สำหรับวิเคราะห์ปริมาณขยะ การนำขยะไปใช้ประโยชน์ และปริมาณขยะที่ส่งกำจัด โดยสามารถกรองข้อมูลตามปี สังกัด หน่วยงาน และเดือนได้"
+    "วิเคราะห์ข้อมูลวาระการประชุม รูปแบบการประชุม และประเภทเรื่องการพิจารณา (ปีงบประมาณ พ.ศ. 2561 - 2567) "
+    "แหล่งข้อมูลจาก สำนักงานนโยบายและแผนทรัพยากรธรรมชาติและสิ่งแวดล้อม (สผ.) ผ่าน data.go.th"
 )
 
 # ==========================================
@@ -157,83 +159,84 @@ st.markdown(
 # ==========================================
 st.markdown("### 📊 สรุปข้อมูล")
 
-if not filtered_df.empty:
-    total_waste_gen = filtered_df["ขยะที่เกิดขึ้น (กก.)"].sum()
-    total_waste_rec = filtered_df["นำไปใช้ประโยชน์ (กก.)"].sum()
-    total_waste_disp = filtered_df["ขยะที่ส่งกำจัด (กก.)"].sum()
-    avg_reduction = filtered_df["ร้อยละขยะส่งกำจัดลดลง"].mean()
-    total_foam = filtered_df["โฟมบรรจุอาหาร (ใบ)"].sum()
-else:
-    total_waste_gen = 0.0
-    total_waste_rec = 0.0
-    total_waste_disp = 0.0
-    avg_reduction = 0.0
-    total_foam = 0.0
+total_agendas = len(filtered_df)
+total_consider = (filtered_df["ประเภทวาระ"] == "เรื่องเพื่อพิจารณา").sum() if not filtered_df.empty else 0
+total_inform = (filtered_df["ประเภทวาระ"] == "เรื่องเพื่อทราบ").sum() if not filtered_df.empty else 0
+total_onsite = (filtered_df["รูปแบบการประชุม"] == "on site").sum() if not filtered_df.empty else 0
+total_online = (filtered_df["รูปแบบการประชุม"] == "online").sum() if not filtered_df.empty else 0
 
 col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("ขยะที่เกิดขึ้น", f"{total_waste_gen:,.2f} กก.")
-col2.metric("นำไปใช้ประโยชน์", f"{total_waste_rec:,.2f} กก.")
-col3.metric("ขยะที่ส่งกำจัด", f"{total_waste_disp:,.2f} กก.")
-col4.metric("เฉลี่ยขยะส่งกำจัดลดลง", f"{avg_reduction:.2f}%")
-col5.metric("โฟมบรรจุอาหาร", f"{int(total_foam):,} ใบ")
+col1.metric("วาระทั้งหมด", f"{total_agendas:,} วาระ")
+col2.metric("เรื่องเพื่อพิจารณา", f"{total_consider:,} วาระ")
+col3.metric("เรื่องเพื่อทราบ", f"{total_inform:,} วาระ")
+col4.metric("การประชุม On-site", f"{total_onsite:,} วาระ")
+col5.metric("การประชุม Online", f"{total_online:,} วาระ")
 
 st.divider()
 
 # ==========================================
-# Section 2: Monthly Waste Trend
+# Section 2: Yearly Trend Chart
 # ==========================================
-st.markdown("### 📈 ปริมาณขยะรายเดือน")
-fig_monthly = create_monthly_trend_chart(filtered_df, selected_months=selected_months if selected_months else present_months)
-st.plotly_chart(fig_monthly, use_container_width=True)
+st.markdown("### 📈 แนวโน้มวาระการประชุมตามปีงบประมาณ")
+fig_yearly = create_yearly_trend_chart(filtered_df)
+st.plotly_chart(fig_yearly, width="stretch")
 
 # ==========================================
-# Section 3: Waste by Department
+# Section 3: Topic & Domain Breakdown
 # ==========================================
-st.markdown("### 🏢 ปริมาณขยะตามหน่วยงาน")
-fig_dept = create_department_comparison_chart(filtered_df)
-st.plotly_chart(fig_dept, use_container_width=True)
+st.markdown("### 📑 สัดส่วนเรื่องและด้านสิ่งแวดล้อม")
+col_topic, col_domain = st.columns(2)
+
+with col_topic:
+    fig_topic = create_topic_donut_chart(filtered_df)
+    st.plotly_chart(fig_topic, width="stretch")
+
+with col_domain:
+    fig_domain = create_domain_bar_chart(filtered_df)
+    st.plotly_chart(fig_domain, width="stretch")
 
 # ==========================================
-# Section 4: Waste Management Distribution & Top 10
+# Section 4: Format Comparison & Top Proposing Agencies
 # ==========================================
-st.markdown("### ♻️ การจัดการขยะ")
-col_donut, col_top10 = st.columns(2)
+st.markdown("### 💻 รูปแบบการประชุมและหน่วยงานเจ้าของวาระ")
+col_format, col_agency = st.columns(2)
 
-with col_donut:
-    fig_donut = create_waste_management_donut_chart(filtered_df)
-    st.plotly_chart(fig_donut, use_container_width=True)
+with col_format:
+    fig_format = create_meeting_format_chart(filtered_df)
+    st.plotly_chart(fig_format, width="stretch")
 
-with col_top10:
-    fig_top10 = create_top10_departments_chart(filtered_df)
-    st.plotly_chart(fig_top10, use_container_width=True)
+with col_agency:
+    fig_agency = create_top_agencies_chart(filtered_df)
+    st.plotly_chart(fig_agency, width="stretch")
 
 # ==========================================
-# Section 5: Monthly Average Staff
+# Section 5: Monthly Distribution
 # ==========================================
-st.markdown("### 👥 คนเฉลี่ยและวันทำงาน")
-fig_staff = create_monthly_staff_chart(filtered_df, selected_months=selected_months if selected_months else present_months)
-st.plotly_chart(fig_staff, use_container_width=True)
+st.markdown("### 📅 การประชุมรายเดือน")
+fig_monthly = create_monthly_meeting_chart(filtered_df)
+st.plotly_chart(fig_monthly, width="stretch")
 
 # ==========================================
 # Section 6: Data Table
 # ==========================================
-st.markdown("### 📋 รายละเอียดข้อมูล")
+st.markdown("### 📋 รายละเอียดวาระการประชุม")
 display_cols = [
-    "ปี",
-    "สังกัด",
-    "หน่วยงาน",
+    "ปีงบประมาณ พ.ศ.",
+    "ครั้งที่",
+    "วันที่",
     "เดือน",
-    "คนเฉลี่ย",
-    "วันทำงาน",
-    "โฟมบรรจุอาหาร (ใบ)",
-    "ขยะที่เกิดขึ้น (กก.)",
-    "นำไปใช้ประโยชน์ (กก.)",
-    "ขยะที่ส่งกำจัด (กก.)",
-    "ร้อยละขยะส่งกำจัดลดลง",
+    "ประเภทวาระ",
+    "วาระที่",
+    "ชื่อวาระ",
+    "ประเภทเรื่อง",
+    "ด้าน",
+    "เจ้าของวาระ",
+    "รูปแบบการประชุม",
+    "สถานที่",
 ]
 available_display_cols = [c for c in display_cols if c in filtered_df.columns]
 st.dataframe(
     filtered_df[available_display_cols].reset_index(drop=True),
-    use_container_width=True,
+    width="stretch",
     hide_index=True,
 )

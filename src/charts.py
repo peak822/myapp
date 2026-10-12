@@ -1,17 +1,18 @@
 """
-Module for generating Plotly charts matching the prototype dashboard
+Module for generating Plotly charts for National Environmental Board Meeting Dashboard
 """
 from typing import List, Optional
 import pandas as pd
 import plotly.graph_objects as go
 from src.data_cleaning import THAI_MONTHS
 
-# Color palette matching prototype
-COLOR_GENERATED = "#0068c9"   # Primary blue
-COLOR_RECYCLED = "#60b4ff"    # Sky/light blue
-COLOR_DISPOSED = "#ff4b4b"    # Red/coral
-COLOR_STAFF = "#60b4ff"       # Light blue (matches prototype image)
-COLOR_TOP10 = "#60b4ff"       # Light blue (matches prototype image)
+# Harmonious environmental color palette
+COLOR_CONSIDER = "#0068c9"    # Dark blue (เรื่องเพื่อพิจารณา)
+COLOR_INFORM = "#00d4ff"      # Cyan/light blue (เรื่องเพื่อทราบ)
+COLOR_ONSITE = "#0068c9"      # Blue (on site)
+COLOR_ONLINE = "#00d4ff"      # Bright Cyan (online)
+COLOR_DOMAIN = "#00b4d8"      # Teal/Cyan
+COLOR_MONTH = "#0077b6"       # Ocean Blue
 
 
 def get_empty_figure(message: str = "ไม่พบข้อมูลตามเงื่อนไขที่เลือก") -> go.Figure:
@@ -36,194 +37,87 @@ def get_empty_figure(message: str = "ไม่พบข้อมูลตาม�
     return fig
 
 
-def create_monthly_trend_chart(df: pd.DataFrame, selected_months: Optional[List[str]] = None) -> go.Figure:
+def create_yearly_trend_chart(df: pd.DataFrame) -> go.Figure:
     """
-    Creates monthly waste trend line chart with 3 series:
-    - ขยะที่เกิดขึ้น (กก.)
-    - นำไปใช้ประโยชน์ (กก.)
-    - ขยะที่ส่งกำจัด (กก.)
+    Creates stacked bar chart of meeting agendas by fiscal year and agenda type.
     """
     if df.empty:
         return get_empty_figure()
 
-    months = THAI_MONTHS
-
-    monthly_summary = (
-        df.groupby("เดือน", as_index=False)[
-            ["ขยะที่เกิดขึ้น (กก.)", "นำไปใช้ประโยชน์ (กก.)", "ขยะที่ส่งกำจัด (กก.)"]
-        ]
-        .sum()
+    pivot = (
+        df.groupby(["ปีงบประมาณ พ.ศ.", "ประเภทวาระ"])
+        .size()
+        .unstack(fill_value=0)
+        .reset_index()
     )
-
-    # Reindex to ensure all 12 calendar months are present
-    month_df = pd.DataFrame({"เดือน": months})
-    merged = pd.merge(month_df, monthly_summary, on="เดือน", how="left").fillna(0)
 
     fig = go.Figure()
 
-    fig.add_trace(
-        go.Scatter(
-            x=merged["เดือน"],
-            y=merged["ขยะที่เกิดขึ้น (กก.)"],
-            name="ขยะที่เกิดขึ้น (กก.)",
-            mode="lines+markers",
-            line=dict(color=COLOR_GENERATED, width=2.5),
-            marker=dict(size=6),
-            hovertemplate="<b>%{x}</b><br>ขยะที่เกิดขึ้น: %{y:,.2f} กก.<extra></extra>",
+    if "เรื่องเพื่อพิจารณา" in pivot.columns:
+        fig.add_trace(
+            go.Bar(
+                x=pivot["ปีงบประมาณ พ.ศ."],
+                y=pivot["เรื่องเพื่อพิจารณา"],
+                name="เรื่องเพื่อพิจารณา",
+                marker_color=COLOR_CONSIDER,
+                hovertemplate="<b>ปี %{x}</b><br>เพื่อพิจารณา: %{y:,} วาระ<extra></extra>",
+            )
         )
-    )
 
-    fig.add_trace(
-        go.Scatter(
-            x=merged["เดือน"],
-            y=merged["นำไปใช้ประโยชน์ (กก.)"],
-            name="นำไปใช้ประโยชน์ (กก.)",
-            mode="lines+markers",
-            line=dict(color=COLOR_RECYCLED, width=2.5),
-            marker=dict(size=6),
-            hovertemplate="<b>%{x}</b><br>นำไปใช้ประโยชน์: %{y:,.2f} กก.<extra></extra>",
+    if "เรื่องเพื่อทราบ" in pivot.columns:
+        fig.add_trace(
+            go.Bar(
+                x=pivot["ปีงบประมาณ พ.ศ."],
+                y=pivot["เรื่องเพื่อทราบ"],
+                name="เรื่องเพื่อทราบ",
+                marker_color=COLOR_INFORM,
+                hovertemplate="<b>ปี %{x}</b><br>เพื่อทราบ: %{y:,} วาระ<extra></extra>",
+            )
         )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=merged["เดือน"],
-            y=merged["ขยะที่ส่งกำจัด (กก.)"],
-            name="ขยะที่ส่งกำจัด (กก.)",
-            mode="lines+markers",
-            line=dict(color=COLOR_DISPOSED, width=2.5),
-            marker=dict(size=6),
-            hovertemplate="<b>%{x}</b><br>ขยะที่ส่งกำจัด: %{y:,.2f} กก.<extra></extra>",
-        )
-    )
 
     fig.update_layout(
-        title=dict(text="แนวโน้มปริมาณขยะรายเดือน", font=dict(size=16)),
-        xaxis=dict(title="เดือน", showgrid=True),
-        yaxis=dict(title="ปริมาณ (กก.)", showgrid=True, rangemode="tozero"),
-        legend=dict(
-            title=dict(text="ประเภทขยะ"),
-            orientation="v",
-            x=1.02,
-            y=1,
-            xanchor="left",
-            yanchor="top",
-        ),
+        title=dict(text="แนวโน้มจำนวนวาระการประชุมตามปีงบประมาณ", font=dict(size=16)),
+        barmode="stack",
+        xaxis=dict(title="ปีงบประมาณ พ.ศ.", type="category", showgrid=False),
+        yaxis=dict(title="จำนวนวาระ", showgrid=True),
+        legend=dict(orientation="v", x=1.02, y=1),
         margin=dict(l=40, r=40, t=50, b=40),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        hovermode="x unified",
         height=450,
     )
     return fig
 
 
-def create_department_comparison_chart(df: pd.DataFrame) -> go.Figure:
+def create_topic_donut_chart(df: pd.DataFrame) -> go.Figure:
     """
-    Creates grouped bar chart comparing waste metrics across departments.
-    """
-    if df.empty:
-        return get_empty_figure()
-
-    dept_summary = (
-        df.groupby("หน่วยงาน", as_index=False)[
-            ["ขยะที่เกิดขึ้น (กก.)", "นำไปใช้ประโยชน์ (กก.)", "ขยะที่ส่งกำจัด (กก.)"]
-        ]
-        .sum()
-    )
-
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Bar(
-            x=dept_summary["หน่วยงาน"],
-            y=dept_summary["ขยะที่เกิดขึ้น (กก.)"],
-            name="ขยะที่เกิดขึ้น (กก.)",
-            marker_color=COLOR_GENERATED,
-            hovertemplate="<b>%{x}</b><br>ขยะที่เกิดขึ้น: %{y:,.2f} กก.<extra></extra>",
-        )
-    )
-
-    fig.add_trace(
-        go.Bar(
-            x=dept_summary["หน่วยงาน"],
-            y=dept_summary["นำไปใช้ประโยชน์ (กก.)"],
-            name="นำไปใช้ประโยชน์ (กก.)",
-            marker_color=COLOR_RECYCLED,
-            hovertemplate="<b>%{x}</b><br>นำไปใช้ประโยชน์: %{y:,.2f} กก.<extra></extra>",
-        )
-    )
-
-    fig.add_trace(
-        go.Bar(
-            x=dept_summary["หน่วยงาน"],
-            y=dept_summary["ขยะที่ส่งกำจัด (กก.)"],
-            name="ขยะที่ส่งกำจัด (กก.)",
-            marker_color=COLOR_DISPOSED,
-            hovertemplate="<b>%{x}</b><br>ขยะที่ส่งกำจัด: %{y:,.2f} กก.<extra></extra>",
-        )
-    )
-
-    fig.update_layout(
-        title=dict(text="เปรียบเทียบปริมาณขยะตามหน่วยงาน", font=dict(size=16)),
-        barmode="group",
-        xaxis=dict(
-            title="หน่วยงาน",
-            tickangle=-45,
-            showgrid=False,
-            tickfont=dict(size=10),
-        ),
-        yaxis=dict(title="ปริมาณ (กก.)", showgrid=True),
-        legend=dict(
-            title=dict(text="ประเภท"),
-            orientation="v",
-            x=1.02,
-            y=1,
-            xanchor="left",
-            yanchor="top",
-        ),
-        margin=dict(l=40, r=40, t=50, b=120),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        height=500,
-    )
-    return fig
-
-
-def create_waste_management_donut_chart(df: pd.DataFrame) -> go.Figure:
-    """
-    Creates donut chart showing proportion of recycled vs disposed waste.
+    Creates donut chart showing distribution of meeting topics.
     """
     if df.empty:
         return get_empty_figure()
 
-    total_recycled = df["นำไปใช้ประโยชน์ (กก.)"].sum()
-    total_disposed = df["ขยะที่ส่งกำจัด (กก.)"].sum()
+    topic_counts = df["ประเภทเรื่อง"].value_counts().reset_index()
+    topic_counts.columns = ["ประเภทเรื่อง", "จำนวน"]
 
-    if (total_recycled + total_disposed) <= 0:
-        return get_empty_figure("ไม่มีข้อมูลปริมาณการจัดการขยะ")
-
-    labels = ["ส่งกำจัด", "นำไปใช้ประโยชน์"]
-    values = [total_disposed, total_recycled]
-    colors = [COLOR_GENERATED, COLOR_RECYCLED]
+    palette = ["#0077b6", "#0096c7", "#00b4d8", "#48cae4", "#90e0ef", "#caf0f8"]
 
     fig = go.Figure(
         data=[
             go.Pie(
-                labels=labels,
-                values=values,
+                labels=topic_counts["ประเภทเรื่อง"],
+                values=topic_counts["จำนวน"],
                 hole=0.5,
-                marker=dict(colors=colors),
+                marker=dict(colors=palette),
                 textinfo="percent",
                 direction="clockwise",
                 sort=False,
-                hovertemplate="<b>%{label}</b><br>ปริมาณ: %{value:,.2f} กก. (%{percent})<extra></extra>",
+                hovertemplate="<b>%{label}</b><br>จำนวน: %{value:,} วาระ (%{percent})<extra></extra>",
             )
         ]
     )
 
     fig.update_layout(
-        title=dict(text="สัดส่วนการจัดการขยะ", font=dict(size=15)),
+        title=dict(text="สัดส่วนประเภทเรื่องการประชุม", font=dict(size=15)),
         showlegend=True,
         legend=dict(orientation="v", x=1.02, y=0.5),
         margin=dict(l=20, r=20, t=40, b=20),
@@ -234,37 +128,31 @@ def create_waste_management_donut_chart(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def create_top10_departments_chart(df: pd.DataFrame) -> go.Figure:
+def create_domain_bar_chart(df: pd.DataFrame) -> go.Figure:
     """
-    Creates horizontal bar chart of top 10 departments with highest waste generated.
+    Creates horizontal bar chart for environmental domains (ด้าน).
     """
     if df.empty:
         return get_empty_figure()
 
-    dept_summary = (
-        df.groupby("หน่วยงาน", as_index=False)["ขยะที่เกิดขึ้น (กก.)"]
-        .sum()
-        .sort_values(by="ขยะที่เกิดขึ้น (กก.)", ascending=False)
-        .head(10)
-    )
-
-    # Sort ascending for horizontal bar chart display so largest is at the top
-    dept_summary_asc = dept_summary.sort_values(by="ขยะที่เกิดขึ้น (กก.)", ascending=True)
+    domain_counts = df["ด้าน"].value_counts().reset_index()
+    domain_counts.columns = ["ด้าน", "จำนวน"]
+    domain_counts = domain_counts.sort_values(by="จำนวน", ascending=True)
 
     fig = go.Figure(
         go.Bar(
-            x=dept_summary_asc["ขยะที่เกิดขึ้น (กก.)"],
-            y=dept_summary_asc["หน่วยงาน"],
+            x=domain_counts["จำนวน"],
+            y=domain_counts["ด้าน"],
             orientation="h",
-            marker_color=COLOR_TOP10,
-            hovertemplate="<b>%{y}</b><br>ขยะที่เกิดขึ้น: %{x:,.2f} กก.<extra></extra>",
+            marker_color=COLOR_DOMAIN,
+            hovertemplate="<b>%{y}</b><br>จำนวน: %{x:,} วาระ<extra></extra>",
         )
     )
 
     fig.update_layout(
-        title=dict(text="10 หน่วยงานที่มีขยะเกิดขึ้นสูงสุด", font=dict(size=15)),
-        xaxis=dict(title="ขยะที่เกิดขึ้น (กก.)", showgrid=True),
-        yaxis=dict(title="หน่วยงาน", tickfont=dict(size=11)),
+        title=dict(text="การจำแนกวาระตามด้านสิ่งแวดล้อม", font=dict(size=15)),
+        xaxis=dict(title="จำนวนวาระ", showgrid=True),
+        yaxis=dict(title="ด้าน", tickfont=dict(size=11)),
         margin=dict(l=20, r=20, t=40, b=40),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -273,35 +161,125 @@ def create_top10_departments_chart(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def create_monthly_staff_chart(df: pd.DataFrame, selected_months: Optional[List[str]] = None) -> go.Figure:
+def create_meeting_format_chart(df: pd.DataFrame) -> go.Figure:
     """
-    Creates bar chart of average staff per month.
+    Creates grouped bar chart showing On-site vs Online meeting formats across years.
     """
     if df.empty:
         return get_empty_figure()
 
-    months = THAI_MONTHS
+    pivot = (
+        df.groupby(["ปีงบประมาณ พ.ศ.", "รูปแบบการประชุม"])
+        .size()
+        .unstack(fill_value=0)
+        .reset_index()
+    )
 
-    staff_summary = df.groupby("เดือน", as_index=False)["คนเฉลี่ย"].mean()
-    month_df = pd.DataFrame({"เดือน": months})
-    merged = pd.merge(month_df, staff_summary, on="เดือน", how="left").fillna(0)
+    fig = go.Figure()
+
+    if "on site" in pivot.columns:
+        fig.add_trace(
+            go.Bar(
+                x=pivot["ปีงบประมาณ พ.ศ."],
+                y=pivot["on site"],
+                name="On-site",
+                marker_color=COLOR_ONSITE,
+                hovertemplate="<b>ปี %{x}</b><br>On-site: %{y:,} วาระ<extra></extra>",
+            )
+        )
+
+    if "online" in pivot.columns:
+        fig.add_trace(
+            go.Bar(
+                x=pivot["ปีงบประมาณ พ.ศ."],
+                y=pivot["online"],
+                name="Online",
+                marker_color=COLOR_ONLINE,
+                hovertemplate="<b>ปี %{x}</b><br>Online: %{y:,} วาระ<extra></extra>",
+            )
+        )
+
+    fig.update_layout(
+        title=dict(text="เปรียบเทียบรูปแบบการประชุมตามปีงบประมาณ (On-site vs Online)", font=dict(size=16)),
+        barmode="group",
+        xaxis=dict(title="ปีงบประมาณ พ.ศ.", type="category", showgrid=False),
+        yaxis=dict(title="จำนวนวาระ", showgrid=True),
+        legend=dict(orientation="v", x=1.02, y=1),
+        margin=dict(l=40, r=40, t=50, b=40),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        height=420,
+    )
+    return fig
+
+
+def create_monthly_meeting_chart(df: pd.DataFrame) -> go.Figure:
+    """
+    Creates bar chart of agenda count per Thai calendar month.
+    """
+    if df.empty:
+        return get_empty_figure()
+
+    month_counts = df["เดือน"].value_counts().reset_index()
+    month_counts.columns = ["เดือน", "จำนวน"]
+
+    month_df = pd.DataFrame({"เดือน": THAI_MONTHS})
+    merged = pd.merge(month_df, month_counts, on="เดือน", how="left").fillna(0)
 
     fig = go.Figure(
         go.Bar(
             x=merged["เดือน"],
-            y=merged["คนเฉลี่ย"],
-            marker_color=COLOR_STAFF,
-            hovertemplate="<b>%{x}</b><br>คนเฉลี่ย: %{y:,.1f} คน<extra></extra>",
+            y=merged["จำนวน"],
+            marker_color=COLOR_MONTH,
+            hovertemplate="<b>%{x}</b><br>จำนวนวาระ: %{y:,.0f} วาระ<extra></extra>",
         )
     )
 
     fig.update_layout(
-        title=dict(text="จำนวนคนเฉลี่ยรายเดือน", font=dict(size=16)),
+        title=dict(text="จำนวนวาระการประชุมจำแนกตามเดือน", font=dict(size=16)),
         xaxis=dict(title="เดือน", showgrid=False),
-        yaxis=dict(title="คนเฉลี่ย", showgrid=True),
+        yaxis=dict(title="จำนวนวาระ", showgrid=True),
         margin=dict(l=40, r=40, t=50, b=40),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         height=400,
+    )
+    return fig
+
+
+def create_top_agencies_chart(df: pd.DataFrame) -> go.Figure:
+    """
+    Creates horizontal bar chart for top agencies proposing agendas (เจ้าของวาระ).
+    """
+    if df.empty:
+        return get_empty_figure()
+
+    agency_counts = (
+        df[df["เจ้าของวาระ"] != "ไม่ระบุ"]["เจ้าของวาระ"]
+        .value_counts()
+        .head(7)
+        .reset_index()
+    )
+    agency_counts.columns = ["เจ้าของวาระ", "จำนวน"]
+    agency_counts = agency_counts.sort_values(by="จำนวน", ascending=True)
+
+    fig = go.Figure(
+        go.Bar(
+            x=agency_counts["จำนวน"],
+            y=agency_counts["เจ้าของวาระ"],
+            orientation="h",
+            marker_color=COLOR_CONSIDER,
+            hovertemplate="<b>%{y}</b><br>จำนวนวาระ: %{x:,} วาระ<extra></extra>",
+        )
+    )
+
+    fig.update_layout(
+        title=dict(text="หน่วยงานเจ้าของวาระสูงสุด", font=dict(size=15)),
+        xaxis=dict(title="จำนวนวาระ", showgrid=True),
+        yaxis=dict(title="หน่วยงาน", tickfont=dict(size=11)),
+        margin=dict(l=20, r=20, t=40, b=40),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        height=380,
     )
     return fig
