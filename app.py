@@ -30,33 +30,24 @@ st.markdown(
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
 
-    html, body, [class*="css"], [class*="st-"] {
+    html, body, .stApp {
         font-family: 'Prompt', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Prompt', sans-serif;
-        color: #1a1a2e;
         font-weight: 600;
     }
 
-    /* Metric card improvements */
-    [data-testid="stMetric"] {
-        background-color: #ffffff;
-        border-radius: 8px;
-        padding: 8px 12px;
-    }
-
-    [data-testid="stMetricLabel"] {
-        font-size: 0.95rem !important;
-        color: #4b5563 !important;
-        font-weight: 400;
-    }
-
-    [data-testid="stMetricValue"] {
-        font-size: 1.85rem !important;
-        font-weight: 600 !important;
-        color: #1e293b !important;
+    /* Preserve Streamlit Material Icons for collapse/expand and UI icons */
+    [data-testid="stIconMaterial"],
+    [data-testid*="stIcon"],
+    [class*="material-symbols"],
+    .material-symbols-rounded,
+    .material-symbols-outlined,
+    button[data-testid="stSidebarCollapseButton"] *,
+    button[data-testid="stSidebarCollapsedControl"] * {
+        font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons' !important;
     }
 
     /* Section header styling */
